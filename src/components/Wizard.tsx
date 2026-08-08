@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import type { Interest, Tier } from '../data/regions'
 import type { Pace, PlannerInput } from '../lib/itinerary'
+import { MONTHS } from '../data/seasons'
 import Reveal from './Reveal'
+import SeasonNote from './SeasonNote'
+
+const THIS_YEAR = new Date().getFullYear()
+const YEAR_OPTIONS = [THIS_YEAR, THIS_YEAR + 1, THIS_YEAR + 2]
 
 const INTEREST_OPTIONS: { id: Interest; label: string; ja: string }[] = [
   { id: 'food', label: 'Food', ja: '食' },
@@ -50,6 +55,8 @@ export default function Wizard({
   const [pace, setPace] = useState<Pace>(initial?.pace ?? 'balanced')
   const [budget, setBudget] = useState<Tier>(initial?.budget ?? 'mid')
   const [arrival, setArrival] = useState<'tokyo' | 'osaka'>(initial?.arrival ?? 'tokyo')
+  const [travelMonth, setTravelMonth] = useState<number | undefined>(initial?.travelMonth)
+  const [travelYear, setTravelYear] = useState<number | undefined>(initial?.travelYear ?? THIS_YEAR)
 
   function toggleInterest(id: Interest) {
     setInterests((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
@@ -67,7 +74,7 @@ export default function Wizard({
       <Reveal>
         <p className="tnum text-[11px] tracking-[0.32em] uppercase text-ink-soft mb-4">Plan a route</p>
         <h2 className="font-display font-extrabold text-4xl md:text-5xl mb-14 tracking-[-0.02em]">
-          Five questions
+          Six questions
         </h2>
       </Reveal>
 
@@ -93,7 +100,42 @@ export default function Wizard({
         </div>
       </Field>
 
-      <Field n={2} label="What are you here for?">
+      <Field n={2} label="When are you travelling?">
+        <div className="flex flex-wrap gap-3">
+          <select
+            aria-label="Travel month"
+            value={travelMonth ?? ''}
+            onChange={(e) => setTravelMonth(e.target.value ? Number(e.target.value) : undefined)}
+            className="border border-rule bg-paper px-4 py-2.5 text-sm min-w-[9rem]"
+          >
+            <option value="">Not sure yet</option>
+            {MONTHS.map((m) => (
+              <option key={m.month} value={m.month}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Travel year"
+            value={travelYear ?? ''}
+            disabled={!travelMonth}
+            onChange={(e) => setTravelYear(e.target.value ? Number(e.target.value) : undefined)}
+            className="border border-rule bg-paper px-4 py-2.5 text-sm disabled:opacity-40"
+          >
+            {YEAR_OPTIONS.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+        <SeasonNote month={travelMonth} year={travelYear} />
+        {!travelMonth && (
+          <p className="text-xs text-ink-soft mt-3">Optional — pick a month to see what season it'll be.</p>
+        )}
+      </Field>
+
+      <Field n={3} label="What are you here for?">
         <div className="flex flex-wrap gap-2">
           {INTEREST_OPTIONS.map((opt) => {
             const active = interests.includes(opt.id)
@@ -119,7 +161,7 @@ export default function Wizard({
         )}
       </Field>
 
-      <Field n={3} label="What pace suits you?">
+      <Field n={4} label="What pace suits you?">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {PACE_OPTIONS.map((opt) => (
             <button key={opt.id} onClick={() => setPace(opt.id)} className={card(pace === opt.id)}>
@@ -130,7 +172,7 @@ export default function Wizard({
         </div>
       </Field>
 
-      <Field n={4} label="How are you travelling?">
+      <Field n={5} label="How are you travelling?">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {BUDGET_OPTIONS.map((opt) => (
             <button key={opt.id} onClick={() => setBudget(opt.id)} className={card(budget === opt.id)}>
@@ -141,7 +183,7 @@ export default function Wizard({
         </div>
       </Field>
 
-      <Field n={5} label="Where do you land?">
+      <Field n={6} label="Where do you land?">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(
             [
@@ -159,7 +201,7 @@ export default function Wizard({
 
       <Reveal>
         <button
-          onClick={() => onSubmit({ days, interests, pace, budget, arrival })}
+          onClick={() => onSubmit({ days, interests, pace, budget, arrival, travelMonth, travelYear: travelMonth ? travelYear : undefined })}
           className="group w-full bg-sun text-white py-5 text-sm tracking-[0.16em] uppercase inline-flex items-center justify-center gap-4 hover:gap-6 transition-[gap] duration-300"
         >
           Build the route

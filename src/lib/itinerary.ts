@@ -10,6 +10,10 @@ export interface PlannerInput {
   pace: Pace
   budget: Tier
   arrival: 'tokyo' | 'osaka'
+  /** 1-12. Optional — purely informational (seasonal context), doesn't affect routing. */
+  travelMonth?: number
+  /** Optional, paired with travelMonth for a labelled month/year. */
+  travelYear?: number
 }
 
 export interface DayPlan {

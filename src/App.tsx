@@ -8,6 +8,7 @@ import TransportTable from './components/TransportTable'
 import CostBreakdown from './components/CostBreakdown'
 import Reveal from './components/Reveal'
 import ThemeToggle from './components/ThemeToggle'
+import SeasonNote from './components/SeasonNote'
 import { planTrip, type Itinerary, type PlannerInput } from './lib/itinerary'
 import { encodeInput, decodeInput } from './lib/share'
 import { REGION_META } from './data/regions'
@@ -94,6 +95,7 @@ export default function App() {
                   {trip.days.length} days, {trip.stops.length}{' '}
                   {trip.stops.length === 1 ? 'stop' : 'stops'}
                 </h2>
+                <SeasonNote month={input?.travelMonth} year={input?.travelYear} />
               </div>
               <button
                 onClick={copyLink}
