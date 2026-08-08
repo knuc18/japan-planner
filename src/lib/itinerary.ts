@@ -42,6 +42,10 @@ export interface JrPassVerdict {
 export interface Itinerary {
   stops: RouteStop[]
   legs: Leg[]
+  /** transfers[i] = the legs that get you TO stop i. transfers[0] is always empty. */
+  transfers: Leg[][]
+  /** legs back to the arrival airport from the final stop. */
+  returnLegs: Leg[]
   days: DayPlan[]
   cost: CostBreakdown
   jrPass: JrPassVerdict
@@ -180,11 +184,16 @@ export function planTrip(input: PlannerInput): Itinerary {
   if (leftover > 0) selected[0].days += leftover // everyone's content-capped; park the rest at the first stop
 
   const legs: Leg[] = []
+  const transfers: Leg[][] = [[]]
   for (let i = 0; i < selected.length - 1; i++) {
-    legs.push(...pathLegs(selected[i].region.id, selected[i + 1].region.id, next))
+    const segment = pathLegs(selected[i].region.id, selected[i + 1].region.id, next)
+    transfers.push(segment)
+    legs.push(...segment)
   }
+  let returnLegs: Leg[] = []
   if (selected.length > 1) {
-    legs.push(...pathLegs(selected[selected.length - 1].region.id, arrival, next))
+    returnLegs = pathLegs(selected[selected.length - 1].region.id, arrival, next)
+    legs.push(...returnLegs)
   }
   const totalTravelHours = legs.reduce((sum, l) => sum + l.hours, 0)
 
@@ -230,5 +239,5 @@ export function planTrip(input: PlannerInput): Itinerary {
     savings: jrSpend - passPrice,
   }
 
-  return { stops: selected, legs, days: dayPlans, cost, jrPass, totalTravelHours }
+  return { stops: selected, legs, transfers, returnLegs, days: dayPlans, cost, jrPass, totalTravelHours }
 }

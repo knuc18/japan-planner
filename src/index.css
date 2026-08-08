@@ -3,19 +3,26 @@
 @theme {
   --font-display: "Shippori Mincho", serif;
   --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --color-washi: #f4efe6;
-  --color-sumi: #1c1b19;
-  --color-vermilion: #bc002d;
-  --color-indigo: #223a5e;
-  --color-gold: #b08d57;
-  --color-stone: #86807a;
+  /* Cool bone paper rather than the usual warm cream — closer to the stock
+     a rail map gets printed on. */
+  --color-paper: #edebe4;
+  --color-paper-2: #e3e0d7;
+  --color-ink: #14161a;
+  --color-ink-soft: #5f636a;
+  --color-rule: #cfccc2;
+  --color-indigo: #1b3a5c;
 }
 
 @media (prefers-color-scheme: dark) {
-  @theme {
-    --color-washi: #17161a;
-    --color-sumi: #f4efe6;
+  :root {
+    --color-paper: #101319;
+    --color-paper-2: #171b23;
+    --color-ink: #eceae3;
+    --color-ink-soft: #9aa0a8;
+    --color-rule: #2b313b;
+    --color-indigo: #7aa8d8;
   }
 }
 
@@ -24,54 +31,131 @@ html {
 }
 
 body {
-  background: var(--color-washi);
-  color: var(--color-sumi);
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-family: var(--font-sans);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-.font-display {
-  font-family: var(--font-display);
+/* Line colours are tuned for paper. Thin strokes of them go muddy on a dark
+   ground, so lift the hairline-weight ones only — filled nodes are fine as-is. */
+@media (prefers-color-scheme: dark) {
+  .line-ink {
+    filter: brightness(1.45) saturate(1.05);
+  }
 }
 
-/* seigaiha wave texture, tiled */
-.bg-waves {
-  background-image: radial-gradient(circle at 50% 100%, transparent 24%, color-mix(in srgb, var(--color-indigo) 8%, transparent) 25%, color-mix(in srgb, var(--color-indigo) 8%, transparent) 28%, transparent 29%, transparent 100%),
-    radial-gradient(circle at 50% 0%, transparent 24%, color-mix(in srgb, var(--color-indigo) 8%, transparent) 25%, color-mix(in srgb, var(--color-indigo) 8%, transparent) 28%, transparent 29%, transparent 100%);
-  background-size: 48px 24px;
+/* Tabular figures everywhere numbers are compared: fares, times, day numbers. */
+.tnum {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
-.grain {
-  position: relative;
-}
+/* Paper tooth. Subtle enough to feel like stock, not like a filter. */
 .grain::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
+
+/* --- Scroll reveal ------------------------------------------------------ */
 
 .reveal {
   opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transform: translateY(20px);
+  transition: opacity 0.65s cubic-bezier(0.2, 0.7, 0.3, 1), transform 0.65s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 .reveal.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
-.stamp {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-sumi) 15%, transparent);
+/* The route rail draws itself downward as each stop scrolls into view — the
+   itinerary literally builds the line. */
+.rail-fill {
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1) 0.12s;
+}
+.reveal.is-visible .rail-fill {
+  transform: scaleY(1);
 }
 
-::selection {
-  background: var(--color-vermilion);
-  color: var(--color-washi);
+.node-pop {
+  transform: scale(0.4);
+  opacity: 0;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+.reveal.is-visible .node-pop {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* --- Hero load sequence ------------------------------------------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  opacity: 0;
+  animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 110ms);
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* --- Controls ----------------------------------------------------------- */
+
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 3px;
 }
 
 input[type="range"] {
-  accent-color: var(--color-vermilion);
+  accent-color: var(--color-ink);
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+  .reveal,
+  .rise {
+    opacity: 1;
+    transform: none;
+  }
+  .rail-fill,
+  .node-pop {
+    transform: none;
+    opacity: 1;
+  }
 }

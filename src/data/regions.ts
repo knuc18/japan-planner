@@ -134,3 +134,17 @@ export const REGIONS: Region[] = [
 ]
 
 export const REGION_BY_ID = new Map(REGIONS.map((r) => [r.id, r]))
+
+// Each region gets a station code and a line colour, the way a Japanese rail
+// map codes every line. The colour is carried through the map, the route rail,
+// and the transport table so one region always reads as one colour.
+export const REGION_META: Record<string, { code: string; color: string }> = {
+  tokyo: { code: 'TY', color: '#c8102e' },
+  hakone: { code: 'HK', color: '#c25e12' },
+  kyoto: { code: 'KY', color: '#6e2e8f' },
+  osaka: { code: 'OS', color: '#0a7d3c' },
+  nara: { code: 'NR', color: '#8f6a15' },
+  kanazawa: { code: 'KZ', color: '#0b5fa5' },
+  hiroshima: { code: 'HR', color: '#0e7c86' },
+  hokkaido: { code: 'HD', color: '#4b4fa6' },
+}
