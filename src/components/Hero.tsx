@@ -1,62 +1,85 @@
 import { Fragment } from 'react'
 import { REGION_BY_ID, REGION_META } from '../data/regions'
+import SakuraBranch from './SakuraBranch'
+import Petals from './Petals'
 
 const PREVIEW = ['tokyo', 'hakone', 'kanazawa', 'kyoto', 'nara', 'osaka', 'hiroshima'] as const
 
 export default function Hero({ onStart }: { onStart: () => void }) {
   return (
-    <section className="relative min-h-screen flex flex-col grain">
-      <div className="flex-1 flex items-center">
-        <div className="w-full max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-[1fr_auto] gap-12 items-end">
-          <div>
-            <p
-              className="rise tnum text-[11px] tracking-[0.42em] text-ink-soft mb-8 uppercase"
-              style={{ '--i': 0 } as React.CSSProperties}
-            >
-              路線案内 — Route Planner
-            </p>
-
-            <h1
-              className="rise font-display font-extrabold text-[clamp(2.5rem,7.5vw,5.75rem)] leading-[0.95] tracking-[-0.025em]"
-              style={{ '--i': 1 } as React.CSSProperties}
-            >
-              How far can
-              <br />
-              your days
-              <br />
-              take you?
-            </h1>
-
-            <p
-              className="rise mt-8 text-lg text-ink-soft max-w-md leading-relaxed"
-              style={{ '--i': 2 } as React.CSSProperties}
-            >
-              Three days keeps you near Tokyo. A month opens up Hokkaido. Tell us how long you
-              have and what you love — we'll route the trains and count the yen.
-            </p>
-
-            <button
-              onClick={onStart}
-              className="rise group mt-10 inline-flex items-center gap-4 bg-ink text-paper pl-7 pr-5 py-4 text-sm tracking-[0.16em] uppercase hover:gap-6 transition-[gap] duration-300"
-              style={{ '--i': 3 } as React.CSSProperties}
-            >
-              Plan a route
-              <span aria-hidden>→</span>
-            </button>
+    <section className="relative min-h-screen flex flex-col overflow-hidden grain">
+      {/* The sun sits behind everything and is clipped by the route strip below,
+          so the railway diagram reads as the horizon it rises over. */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        <div className="absolute right-[6%] bottom-[16%] translate-y-1/4">
+          <div className="sun-rise relative">
+            <div
+              className="sun-glow absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{
+                width: 'min(78vw, 660px)',
+                height: 'min(78vw, 660px)',
+                background:
+                  'radial-gradient(circle, color-mix(in srgb, var(--color-sun) 55%, transparent) 0%, color-mix(in srgb, var(--color-sun) 14%, transparent) 42%, transparent 70%)',
+              }}
+            />
+            <div
+              className="relative rounded-full bg-sun"
+              style={{ width: 'min(42vw, 340px)', height: 'min(42vw, 340px)' }}
+            />
           </div>
-
-          {/* Counterweight: the brief, set the way a station sign sets it. */}
-          <p
-            className="rise hidden md:block font-display text-base tracking-[0.4em] text-ink-soft self-center"
-            style={{ writingMode: 'vertical-rl', '--i': 2 } as React.CSSProperties}
-          >
-            日本を、あなたの日数で。
-          </p>
         </div>
       </div>
 
-      {/* Route strip, pinned to the base of the hero like a platform diagram. */}
-      <div className="border-t border-rule">
+      <div className="pointer-events-none absolute -top-2 -left-6 w-[46%] max-w-[430px] opacity-95" aria-hidden>
+        <SakuraBranch />
+      </div>
+      <div className="pointer-events-none absolute -top-6 -right-8 w-[34%] max-w-[320px] opacity-80" aria-hidden>
+        <SakuraBranch flip />
+      </div>
+
+      <Petals />
+
+      <div className="relative flex-1 flex items-center">
+        <div className="w-full max-w-6xl mx-auto px-6 pt-32 pb-20">
+          <p
+            className="rise tnum text-[11px] tracking-[0.42em] text-ink-soft mb-8 uppercase"
+            style={{ '--i': 0 } as React.CSSProperties}
+          >
+            路線案内 — Route Planner
+          </p>
+
+          <h1
+            className="rise font-display font-extrabold text-[clamp(2.5rem,7.5vw,5.75rem)] leading-[0.95] tracking-[-0.025em]"
+            style={{ '--i': 1 } as React.CSSProperties}
+          >
+            How far can
+            <br />
+            your days
+            <br />
+            take you?
+          </h1>
+
+          <p
+            className="rise mt-8 text-lg text-ink-soft max-w-md leading-relaxed"
+            style={{ '--i': 2 } as React.CSSProperties}
+          >
+            Three days keeps you near Tokyo. A month opens up Hokkaido. Tell us how long you
+            have and what you love — we'll route the trains and count the yen.
+          </p>
+
+          <button
+            onClick={onStart}
+            className="rise group mt-10 inline-flex items-center gap-4 bg-sun text-white pl-7 pr-5 py-4 text-sm tracking-[0.16em] uppercase hover:gap-6 transition-[gap] duration-300"
+            style={{ '--i': 3 } as React.CSSProperties}
+          >
+            Plan a route
+            <span aria-hidden>→</span>
+          </button>
+        </div>
+      </div>
+
+      {/* The horizon. Opaque, so it cuts the sun. */}
+      <div className="relative z-10 border-t border-rule bg-paper">
         <div className="max-w-6xl mx-auto px-6 py-7">
           <p
             className="rise tnum text-[10px] tracking-[0.24em] uppercase text-ink-soft mb-6"
@@ -88,7 +111,7 @@ export default function Hero({ onStart }: { onStart: () => void }) {
                   </div>
                   {nextId && (
                     <div
-                      className="flex-1 h-[3px] mt-[5.5px] origin-left"
+                      className="line-ink flex-1 h-[3px] mt-[5.5px] origin-left"
                       style={{
                         background: REGION_META[nextId].color,
                         transform: 'scaleX(0)',

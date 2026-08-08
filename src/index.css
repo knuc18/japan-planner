@@ -5,25 +5,35 @@
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  /* Cool bone paper rather than the usual warm cream — closer to the stock
-     a rail map gets printed on. */
-  --color-paper: #edebe4;
-  --color-paper-2: #e3e0d7;
-  --color-ink: #14161a;
-  --color-ink-soft: #5f636a;
-  --color-rule: #cfccc2;
+  /* Light: warm bone paper with a faint blush, so the sakura sits in it
+     rather than on it. */
+  --color-paper: #f2ede6;
+  --color-paper-2: #e9e1d7;
+  --color-ink: #17151a;
+  --color-ink-soft: #5f5a60;
+  --color-rule: #d3cabf;
   --color-indigo: #1b3a5c;
+
+  /* Hinomaru red — the brand accent, reserved for the sun and primary actions. */
+  --color-sun: #bc002d;
+  --color-sakura: #e8a0b4;
+  --color-sakura-deep: #d4708c;
+  --color-bark: #4a3b34;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-paper: #101319;
-    --color-paper-2: #171b23;
-    --color-ink: #eceae3;
-    --color-ink-soft: #9aa0a8;
-    --color-rule: #2b313b;
-    --color-indigo: #7aa8d8;
-  }
+/* Dark is yozakura — blossom viewing at night, so the ground goes plum-black
+   rather than blue-black and the sun burns a little brighter. */
+:root[data-theme='dark'] {
+  --color-paper: #12111a;
+  --color-paper-2: #1b1924;
+  --color-ink: #efeae4;
+  --color-ink-soft: #9a93a0;
+  --color-rule: #302c3b;
+  --color-indigo: #8fb4dc;
+  --color-sun: #d8213f;
+  --color-sakura: #f0b8c8;
+  --color-sakura-deep: #e08aa4;
+  --color-bark: #6a5b68;
 }
 
 html {
@@ -36,14 +46,13 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
-/* Line colours are tuned for paper. Thin strokes of them go muddy on a dark
-   ground, so lift the hairline-weight ones only — filled nodes are fine as-is. */
-@media (prefers-color-scheme: dark) {
-  .line-ink {
-    filter: brightness(1.45) saturate(1.05);
-  }
+/* Line colours are tuned for paper. Thin strokes go muddy on a dark ground,
+   so lift the hairline-weight ones only — filled nodes are fine as-is. */
+:root[data-theme='dark'] .line-ink {
+  filter: brightness(1.45) saturate(1.05);
 }
 
 /* Tabular figures everywhere numbers are compared: fares, times, day numbers. */
@@ -61,6 +70,89 @@ body {
   pointer-events: none;
   opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* --- The sun ------------------------------------------------------------ */
+
+@keyframes sunrise {
+  from {
+    transform: translateY(30%) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes sun-breathe {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.06);
+  }
+}
+
+.sun-rise {
+  animation: sunrise 1.7s cubic-bezier(0.16, 0.8, 0.3, 1) forwards;
+}
+
+.sun-glow {
+  animation: sun-breathe 9s ease-in-out infinite;
+}
+
+/* --- Falling petals ----------------------------------------------------- */
+
+/* Two nested elements: the outer one falls, the inner one sways and spins.
+   Combining both on one transform would fight over the same property. */
+@keyframes petal-fall {
+  from {
+    transform: translate3d(0, -12vh, 0);
+  }
+  to {
+    transform: translate3d(0, 112vh, 0);
+  }
+}
+
+@keyframes petal-sway {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  50% {
+    transform: translateX(46px) rotate(190deg);
+  }
+  100% {
+    transform: translateX(0) rotate(360deg);
+  }
+}
+
+.petal-drop {
+  position: absolute;
+  top: 0;
+  animation: petal-fall linear infinite;
+}
+
+.petal-spin {
+  animation: petal-sway ease-in-out infinite;
+}
+
+@keyframes branch-sway {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(0.9deg);
+  }
+}
+
+.branch-sway {
+  transform-origin: top left;
+  animation: branch-sway 11s ease-in-out infinite;
 }
 
 /* --- Scroll reveal ------------------------------------------------------ */
@@ -124,17 +216,17 @@ body {
 /* --- Controls ----------------------------------------------------------- */
 
 :where(a, button, input, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-indigo);
+  outline: 2px solid var(--color-sun);
   outline-offset: 3px;
 }
 
 input[type="range"] {
-  accent-color: var(--color-ink);
+  accent-color: var(--color-sun);
 }
 
 ::selection {
-  background: var(--color-ink);
-  color: var(--color-paper);
+  background: var(--color-sun);
+  color: #fff;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -149,7 +241,8 @@ input[type="range"] {
     transition-duration: 0.001ms !important;
   }
   .reveal,
-  .rise {
+  .rise,
+  .sun-rise {
     opacity: 1;
     transform: none;
   }
@@ -157,5 +250,9 @@ input[type="range"] {
   .node-pop {
     transform: none;
     opacity: 1;
+  }
+  /* Petals would freeze mid-air rather than fall — drop them entirely. */
+  .petal-field {
+    display: none;
   }
 }

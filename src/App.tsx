@@ -7,6 +7,7 @@ import Timeline from './components/Timeline'
 import TransportTable from './components/TransportTable'
 import CostBreakdown from './components/CostBreakdown'
 import Reveal from './components/Reveal'
+import ThemeToggle from './components/ThemeToggle'
 import { planTrip, type Itinerary, type PlannerInput } from './lib/itinerary'
 import { encodeInput, decodeInput } from './lib/share'
 import { REGION_META } from './data/regions'
@@ -77,6 +78,7 @@ export default function App() {
 
   return (
     <main>
+      <ThemeToggle />
       <Hero onStart={() => document.getElementById('planner')?.scrollIntoView({ behavior: 'smooth' })} />
       <Wizard key={formKey} onSubmit={handleSubmit} initial={input ?? undefined} />
 
@@ -95,7 +97,7 @@ export default function App() {
               </div>
               <button
                 onClick={copyLink}
-                className="border border-rule hover:border-ink px-5 py-2.5 text-xs tracking-[0.14em] uppercase transition-colors"
+                className="border border-rule hover:border-sun hover:text-sun px-5 py-2.5 text-xs tracking-[0.14em] uppercase transition-colors"
               >
                 {copied ? 'Link copied' : 'Copy share link'}
               </button>
@@ -180,7 +182,8 @@ export default function App() {
         </div>
       )}
 
-      <footer className="border-t border-rule py-10 px-6">
+      <footer className="border-t border-rule py-12 px-6 flex flex-col items-center gap-4">
+        <span className="block w-7 h-7 rounded-full bg-sun" aria-hidden />
         <p className="tnum text-[10px] tracking-[0.22em] uppercase text-ink-soft text-center">
           Built for wandering · Fares are estimates, not bookings
         </p>

@@ -58,8 +58,8 @@ export default function Wizard({
   const card = (active: boolean) =>
     `text-left p-4 border transition-all duration-200 ${
       active
-        ? 'border-ink bg-ink text-paper'
-        : 'border-rule hover:border-ink hover:-translate-y-0.5'
+        ? 'border-sun bg-sun text-white'
+        : 'border-rule hover:border-sun hover:-translate-y-0.5'
     }`
 
   return (
@@ -104,8 +104,8 @@ export default function Wizard({
                 onClick={() => toggleInterest(opt.id)}
                 className={`inline-flex items-center gap-2.5 pl-3 pr-4 py-2.5 border text-sm transition-all duration-200 ${
                   active
-                    ? 'border-ink bg-ink text-paper'
-                    : 'border-rule hover:border-ink hover:-translate-y-0.5'
+                    ? 'border-sun bg-sun text-white'
+                    : 'border-rule hover:border-sun hover:-translate-y-0.5'
                 }`}
               >
                 <span className="font-display text-xs opacity-70">{opt.ja}</span>
@@ -160,7 +160,7 @@ export default function Wizard({
       <Reveal>
         <button
           onClick={() => onSubmit({ days, interests, pace, budget, arrival })}
-          className="group w-full bg-ink text-paper py-5 text-sm tracking-[0.16em] uppercase inline-flex items-center justify-center gap-4 hover:gap-6 transition-[gap] duration-300"
+          className="group w-full bg-sun text-white py-5 text-sm tracking-[0.16em] uppercase inline-flex items-center justify-center gap-4 hover:gap-6 transition-[gap] duration-300"
         >
           Build the route
           <span aria-hidden>→</span>
