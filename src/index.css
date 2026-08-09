@@ -256,3 +256,25 @@ input[type="range"] {
     display: none;
   }
 }
+
+/* --- Print --------------------------------------------------------------- */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  #results {
+    max-width: none !important;
+  }
+  section {
+    break-inside: avoid;
+  }
+}

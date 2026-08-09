@@ -14,6 +14,10 @@ export interface PlannerInput {
   travelMonth?: number
   /** Optional, paired with travelMonth for a labelled month/year. */
   travelYear?: number
+  /** Number of travelers sharing the trip. Defaults to 1 if omitted. */
+  partySize?: number
+  /** Optional total trip budget in yen, for the whole party, to flag against. */
+  budgetCap?: number
 }
 
 export interface DayPlan {
@@ -132,36 +136,88 @@ function maxTravelHoursFor(totalDays: number): number {
   return Infinity
 }
 
-export function planTrip(input: PlannerInput): Itinerary {
-  const { days, interests, pace, budget, arrival } = input
-  const { dist, next } = buildAllPairs()
+// Nobody wants a new hotel every night either. Cap how many stops a route
+// can have based on trip length, independent of the per-leg hour cap above.
+function maxStopsFor(totalDays: number): number {
+  return Math.min(6, Math.max(2, Math.ceil(totalDays / 3)))
+}
+
+// Brute-force the visiting order of the (small, <=5) non-arrival stops so the
+// route doesn't zigzag back and forth across the country. Minimizes total
+// hours from arrival, through every stop, back to arrival.
+// ponytail: fine at <=5 permutable stops (<=120 permutations); would need a
+// real TSP heuristic if maxStopsFor / manual additions ever grow past ~8.
+export function orderStops(
+  arrivalId: string,
+  rest: RouteStop[],
+  dist: Map<string, Map<string, number>>,
+): RouteStop[] {
+  if (rest.length <= 1) return rest
+  let best: RouteStop[] = rest
+  let bestCost = Infinity
+  function permute(remaining: RouteStop[], picked: RouteStop[]) {
+    if (remaining.length === 0) {
+      let cost = 0
+      let cur = arrivalId
+      for (const s of picked) {
+        cost += dist.get(cur)!.get(s.region.id)!
+        cur = s.region.id
+      }
+      cost += dist.get(cur)!.get(arrivalId)! // factor in the trip home
+      if (cost < bestCost) {
+        bestCost = cost
+        best = picked
+      }
+      return
+    }
+    for (let i = 0; i < remaining.length; i++) {
+      const next = [...remaining.slice(0, i), ...remaining.slice(i + 1)]
+      permute(next, [...picked, remaining[i]])
+    }
+  }
+  permute(rest, [])
+  return best
+}
+
+/** All-pairs travel hours between region ids, exposed so the UI can reorder
+ * or price a manually-edited stop list without recomputing the graph itself. */
+export function regionDistances(): Map<string, Map<string, number>> {
+  return buildAllPairs().dist
+}
+
+// Picks *which* regions to visit and how many nights each gets. Ordering
+// into an actual route happens at the end via orderStops.
+export function selectStops(input: PlannerInput): RouteStop[] {
+  const { days, interests, pace, arrival } = input
+  const { dist } = buildAllPairs()
   const scores = new Map(REGIONS.map((r) => [r.id, scoreRegion(r, interests)]))
   const maxHours = maxTravelHoursFor(days)
+  const maxStops = maxStopsFor(days)
 
   const arrivalRegion = REGION_BY_ID.get(arrival)!
   const selected: RouteStop[] = [{ region: arrivalRegion, days: arrivalRegion.minDays }]
   const selectedIds = new Set<string>([arrival])
   let runningMinDays = arrivalRegion.minDays
-  let current: string = arrival
 
   // Greedily extend the route: at each step, add whichever unvisited region
-  // gives the best score-per-day-of-travel-and-stay, as long as it still
-  // fits the remaining day budget.
-  while (true) {
+  // gives the best score-for-the-detour, as long as it still fits the
+  // remaining day budget and the stop-count cap. Distance is measured to the
+  // *nearest* already-selected stop (not just the last one added) so the
+  // route stays a compact cluster instead of chaining off one straggler.
+  while (selected.length < maxStops) {
     let best: { region: Region; efficiency: number } | null = null
     for (const region of REGIONS) {
       if (selectedIds.has(region.id)) continue
       if (runningMinDays + region.minDays > days) continue
-      const hours = dist.get(current)!.get(region.id) ?? Infinity
+      const hours = Math.min(...[...selectedIds].map((id) => dist.get(id)!.get(region.id) ?? Infinity))
       if (hours > maxHours) continue
-      const efficiency = scores.get(region.id)! / (region.minDays + hours * 0.3)
+      const efficiency = scores.get(region.id)! / (1 + hours * 0.3)
       if (!best || efficiency > best.efficiency) best = { region, efficiency }
     }
     if (!best) break
     selected.push({ region: best.region, days: best.region.minDays })
     selectedIds.add(best.region.id)
     runningMinDays += best.region.minDays
-    current = best.region.id
   }
 
   // Water-fill remaining days across selected stops, weighted by score, but
@@ -187,23 +243,62 @@ export function planTrip(input: PlannerInput): Itinerary {
   }
   if (leftover > 0) selected[0].days += leftover // everyone's content-capped; park the rest at the first stop
 
+  // Selection order isn't visiting order — resolve the actual route now.
+  return [selected[0], ...orderStops(arrival, selected.slice(1), dist)]
+}
+
+// Sliding-window max over a candidate pass duration: the most JR-covered yen
+// spent in any windowDays-long stretch of the trip. legs/offsets are both in
+// chronological trip order, offsets non-decreasing, so a two-pointer sweep
+// suffices — no need to re-sort per window size.
+function bestWindowSpend(legs: Leg[], offsets: number[], windowDays: number): number {
+  let best = 0
+  let sum = 0
+  let start = 0
+  for (let end = 0; end < legs.length; end++) {
+    if (legs[end].jrPassCovered) sum += legs[end].yen
+    while (start < end && offsets[end] - offsets[start] >= windowDays) {
+      if (legs[start].jrPassCovered) sum -= legs[start].yen
+      start++
+    }
+    best = Math.max(best, sum)
+  }
+  return best
+}
+
+// Builds legs, day-by-day activities, cost, and the JR Pass verdict from an
+// explicit, already-ordered stop list — separated from selectStops so an
+// edited route (stop added/removed/nights nudged) can be rebuilt without
+// re-running the greedy selector.
+export function buildItinerary(input: PlannerInput, stops: RouteStop[]): Itinerary {
+  const { interests, pace, budget, arrival } = input
+  const { next } = buildAllPairs()
+  const selected = stops
+
+  const daysBefore: number[] = [0]
+  for (const s of selected) daysBefore.push(daysBefore[daysBefore.length - 1] + s.days)
+
   const legs: Leg[] = []
+  const legDayOffsets: number[] = []
   const transfers: Leg[][] = [[]]
   for (let i = 0; i < selected.length - 1; i++) {
     const segment = pathLegs(selected[i].region.id, selected[i + 1].region.id, next)
     transfers.push(segment)
     legs.push(...segment)
+    segment.forEach(() => legDayOffsets.push(daysBefore[i + 1]))
   }
   let returnLegs: Leg[] = []
   if (selected.length > 1) {
     returnLegs = pathLegs(selected[selected.length - 1].region.id, arrival, next)
     legs.push(...returnLegs)
+    returnLegs.forEach(() => legDayOffsets.push(daysBefore[selected.length]))
   }
   const totalTravelHours = legs.reduce((sum, l) => sum + l.hours, 0)
 
   const usedActivities = new Set<string>()
   const dayPlans: DayPlan[] = []
   let dayCounter = 1
+  const slotsPerDay = PACE_SLOTS[pace]
   for (const stop of selected) {
     const pool = (ACTIVITIES_BY_REGION[stop.region.id] ?? [])
       .filter((a) => !usedActivities.has(a.id))
@@ -232,16 +327,20 @@ export function planTrip(input: PlannerInput): Itinerary {
     total: transportCost + lodging + food + activitiesCost,
   }
 
-  const jrSpend = legs.filter((l) => l.jrPassCovered).reduce((sum, l) => sum + l.yen, 0)
-  const passDays: 7 | 14 | 21 = days <= 7 ? 7 : days <= 14 ? 14 : 21
-  const passPrice = JR_PASS_PRICE[passDays]
-  const jrPass: JrPassVerdict = {
-    recommended: jrSpend > passPrice,
-    jrSpend,
-    passPrice,
-    passDays,
-    savings: jrSpend - passPrice,
-  }
+  // Check all three pass durations against the busiest windowDays-long
+  // stretch of the trip (not total trip spend), so a long trip can still
+  // correctly recommend a short pass for just its travel-heavy week.
+  const jrPass: JrPassVerdict = ([7, 14, 21] as const)
+    .map((passDays) => {
+      const passPrice = JR_PASS_PRICE[passDays]
+      const jrSpend = bestWindowSpend(legs, legDayOffsets, passDays)
+      return { recommended: jrSpend > passPrice, jrSpend, passPrice, passDays, savings: jrSpend - passPrice }
+    })
+    .reduce((best, cur) => (cur.savings > best.savings ? cur : best))
 
   return { stops: selected, legs, transfers, returnLegs, days: dayPlans, cost, jrPass, totalTravelHours }
+}
+
+export function planTrip(input: PlannerInput): Itinerary {
+  return buildItinerary(input, selectStops(input))
 }
