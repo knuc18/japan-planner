@@ -8,6 +8,8 @@ export interface Activity {
   hours: number
   yen: number
   tags: Interest[]
+  /** Needs a reservation, lottery entry, or advance ticket — not a walk-up. */
+  bookAhead?: boolean
 }
 
 export const ACTIVITIES: Activity[] = [
@@ -17,11 +19,11 @@ export const ACTIVITIES: Activity[] = [
   { id: 'tky-tsukiji', regionId: 'tokyo', name: 'Tsukiji Outer Market breakfast', blurb: 'Fresh sushi and grilled skewers from stalls that open at dawn.', hours: 2, yen: 3500, tags: ['food'] },
   { id: 'tky-akihabara', regionId: 'tokyo', name: 'Akihabara arcades & anime shops', blurb: 'Retro arcades, figure shops, and maid cafes.', hours: 3, yen: 3000, tags: ['pop-culture'] },
   { id: 'tky-meiji', regionId: 'tokyo', name: 'Meiji Shrine & Harajuku', blurb: 'A forested Shinto shrine steps from Tokyo\'s trendiest street.', hours: 3, yen: 0, tags: ['history', 'pop-culture'] },
-  { id: 'tky-teamlab', regionId: 'tokyo', name: 'teamLab digital art museum', blurb: 'Room-scale projected light installations you walk through.', hours: 3, yen: 3800, tags: ['art', 'pop-culture'] },
+  { id: 'tky-teamlab', regionId: 'tokyo', name: 'teamLab digital art museum', blurb: 'Room-scale projected light installations you walk through.', hours: 3, yen: 3800, tags: ['art', 'pop-culture'], bookAhead: true },
   { id: 'tky-golden-gai', regionId: 'tokyo', name: 'Golden Gai bar hopping', blurb: 'Six alleys of two-seat bars packed into Shinjuku.', hours: 3, yen: 6000, tags: ['nightlife'] },
   { id: 'tky-tsukishima', regionId: 'tokyo', name: 'Monjayaki dinner in Tsukishima', blurb: 'Griddle-cooked Tokyo comfort food, table-side.', hours: 2, yen: 3200, tags: ['food'] },
-  { id: 'tky-ghibli', regionId: 'tokyo', name: 'Ghibli Museum, Mitaka', blurb: 'A whimsical museum built like a Miyazaki film set.', hours: 3, yen: 2200, tags: ['pop-culture', 'art'] },
-  { id: 'tky-sumo', regionId: 'tokyo', name: 'Sumo stable morning practice', blurb: 'Watch wrestlers train up close before the crowds arrive.', hours: 2, yen: 9000, tags: ['history'] },
+  { id: 'tky-ghibli', regionId: 'tokyo', name: 'Ghibli Museum, Mitaka', blurb: 'A whimsical museum built like a Miyazaki film set.', hours: 3, yen: 2200, tags: ['pop-culture', 'art'], bookAhead: true },
+  { id: 'tky-sumo', regionId: 'tokyo', name: 'Sumo stable morning practice', blurb: 'Watch wrestlers train up close before the crowds arrive.', hours: 2, yen: 9000, tags: ['history'], bookAhead: true },
 
   // Hakone
   { id: 'hak-ropeway', regionId: 'hakone', name: 'Hakone Ropeway over Owakudani', blurb: 'Cable car over active sulfur vents, with Fuji views on clear days.', hours: 3, yen: 4200, tags: ['nature'] },
@@ -37,7 +39,7 @@ export const ACTIVITIES: Activity[] = [
   { id: 'kyo-kinkakuji', regionId: 'kyoto', name: 'Kinkaku-ji golden pavilion', blurb: 'A gold-leafed temple reflected in a still pond.', hours: 2, yen: 500, tags: ['history'] },
   { id: 'kyo-gion', regionId: 'kyoto', name: 'Gion evening walk', blurb: 'Lantern-lit streets where geiko and maiko still work.', hours: 2, yen: 0, tags: ['history', 'nightlife'] },
   { id: 'kyo-nishiki', regionId: 'kyoto', name: 'Nishiki Market food crawl', blurb: 'Kyoto\'s pantry: pickles, skewers, and knife shops.', hours: 2, yen: 4000, tags: ['food'] },
-  { id: 'kyo-tea', regionId: 'kyoto', name: 'Traditional tea ceremony', blurb: 'A quiet matcha ceremony led by a certified host.', hours: 1, yen: 4500, tags: ['history', 'art'] },
+  { id: 'kyo-tea', regionId: 'kyoto', name: 'Traditional tea ceremony', blurb: 'A quiet matcha ceremony led by a certified host.', hours: 1, yen: 4500, tags: ['history', 'art'], bookAhead: true },
   { id: 'kyo-kiyomizu', regionId: 'kyoto', name: 'Kiyomizu-dera temple', blurb: 'A wooden temple on stilts with sweeping city views.', hours: 2, yen: 500, tags: ['history'] },
   { id: 'kyo-pontocho', regionId: 'kyoto', name: 'Pontocho alley dinner', blurb: 'Riverside kaiseki and yakitori in a narrow historic lane.', hours: 2, yen: 8000, tags: ['food', 'nightlife'] },
 
@@ -45,7 +47,7 @@ export const ACTIVITIES: Activity[] = [
   { id: 'osa-dotonbori', regionId: 'osaka', name: 'Dotonbori food crawl', blurb: 'Takoyaki, okonomiyaki, and neon signs over a canal.', hours: 3, yen: 5000, tags: ['food', 'nightlife'] },
   { id: 'osa-castle', regionId: 'osaka', name: 'Osaka Castle', blurb: 'A rebuilt feudal castle with a museum and park grounds.', hours: 2, yen: 600, tags: ['history'] },
   { id: 'osa-kuromon', regionId: 'osaka', name: 'Kuromon Ichiba Market', blurb: 'Grilled seafood skewers eaten standing at market stalls.', hours: 2, yen: 3500, tags: ['food'] },
-  { id: 'osa-usj', regionId: 'osaka', name: 'Universal Studios Japan', blurb: 'Mario Kart, Nintendo World, and Harry Potter, Japan-style.', hours: 8, yen: 9400, tags: ['pop-culture'] },
+  { id: 'osa-usj', regionId: 'osaka', name: 'Universal Studios Japan', blurb: 'Mario Kart, Nintendo World, and Harry Potter, Japan-style.', hours: 8, yen: 9400, tags: ['pop-culture'], bookAhead: true },
   { id: 'osa-shinsekai', regionId: 'osaka', name: 'Shinsekai retro nightlife', blurb: 'Kushikatsu skewers under a Tower of the Sun-era skyline.', hours: 2, yen: 3000, tags: ['nightlife', 'food'] },
   { id: 'osa-aquarium', regionId: 'osaka', name: 'Osaka Aquarium Kaiyukan', blurb: 'A whale shark circling one of the world\'s largest tanks.', hours: 2, yen: 2700, tags: ['nature'] },
 

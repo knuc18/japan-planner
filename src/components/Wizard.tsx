@@ -57,6 +57,8 @@ export default function Wizard({
   const [arrival, setArrival] = useState<'tokyo' | 'osaka'>(initial?.arrival ?? 'tokyo')
   const [travelMonth, setTravelMonth] = useState<number | undefined>(initial?.travelMonth)
   const [travelYear, setTravelYear] = useState<number | undefined>(initial?.travelYear ?? THIS_YEAR)
+  const [partySize, setPartySize] = useState(initial?.partySize ?? 1)
+  const [budgetCap, setBudgetCap] = useState<number | undefined>(initial?.budgetCap)
 
   function toggleInterest(id: Interest) {
     setInterests((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
@@ -74,7 +76,7 @@ export default function Wizard({
       <Reveal>
         <p className="tnum text-[11px] tracking-[0.32em] uppercase text-ink-soft mb-4">Plan a route</p>
         <h2 className="font-display font-extrabold text-4xl md:text-5xl mb-14 tracking-[-0.02em]">
-          Six questions
+          Seven questions
         </h2>
       </Reveal>
 
@@ -199,9 +201,63 @@ export default function Wizard({
         </div>
       </Field>
 
+      <Field n={7} label="Who's going, and is there a ceiling?">
+        <div className="flex flex-wrap gap-3 items-start">
+          <div className="flex items-center border border-rule">
+            <button
+              type="button"
+              aria-label="Fewer travelers"
+              onClick={() => setPartySize((n) => Math.max(1, n - 1))}
+              className="w-10 h-10 grid place-items-center hover:text-sun text-sm"
+            >
+              −
+            </button>
+            <span className="tnum w-12 text-center text-sm">
+              {partySize} {partySize === 1 ? 'traveler' : 'travelers'}
+            </span>
+            <button
+              type="button"
+              aria-label="More travelers"
+              onClick={() => setPartySize((n) => Math.min(12, n + 1))}
+              className="w-10 h-10 grid place-items-center hover:text-sun text-sm"
+            >
+              +
+            </button>
+          </div>
+          <div className="flex items-center border border-rule px-4 h-10">
+            <span className="text-sm text-ink-soft mr-2">¥</span>
+            <input
+              type="number"
+              min={0}
+              step={10000}
+              placeholder="No ceiling"
+              aria-label="Total budget ceiling in yen, for the whole party"
+              value={budgetCap ?? ''}
+              onChange={(e) => setBudgetCap(e.target.value ? Number(e.target.value) : undefined)}
+              className="tnum bg-transparent text-sm w-32 outline-none"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-ink-soft mt-3">
+          Optional — set a total budget for the whole party and we'll flag it if the plan runs over.
+        </p>
+      </Field>
+
       <Reveal>
         <button
-          onClick={() => onSubmit({ days, interests, pace, budget, arrival, travelMonth, travelYear: travelMonth ? travelYear : undefined })}
+          onClick={() =>
+            onSubmit({
+              days,
+              interests,
+              pace,
+              budget,
+              arrival,
+              travelMonth,
+              travelYear: travelMonth ? travelYear : undefined,
+              partySize,
+              budgetCap,
+            })
+          }
           className="group w-full bg-sun text-white py-5 text-sm tracking-[0.16em] uppercase inline-flex items-center justify-center gap-4 hover:gap-6 transition-[gap] duration-300"
         >
           Build the route

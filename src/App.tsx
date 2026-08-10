@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Hero from './components/Hero'
 import Wizard from './components/Wizard'
 import StatBand from './components/StatBand'
@@ -9,9 +9,17 @@ import CostBreakdown from './components/CostBreakdown'
 import Reveal from './components/Reveal'
 import ThemeToggle from './components/ThemeToggle'
 import SeasonNote from './components/SeasonNote'
-import { planTrip, type Itinerary, type PlannerInput } from './lib/itinerary'
+import {
+  selectStops,
+  buildItinerary,
+  orderStops,
+  regionDistances,
+  type PlannerInput,
+  type RouteStop,
+} from './lib/itinerary'
 import { encodeInput, decodeInput } from './lib/share'
-import { REGION_META } from './data/regions'
+import { downloadIcs } from './lib/ics'
+import { REGIONS, REGION_META } from './data/regions'
 
 function Section({
   label,
@@ -35,16 +43,19 @@ function Section({
   )
 }
 
+function initialStops(input: PlannerInput | null): RouteStop[] | null {
+  return input ? selectStops(input) : null
+}
+
 export default function App() {
   const [input, setInput] = useState<PlannerInput | null>(() => decodeInput(location.hash.slice(1)))
-  const [trip, setTrip] = useState<Itinerary | null>(() => {
-    const initial = decodeInput(location.hash.slice(1))
-    return initial ? planTrip(initial) : null
-  })
+  const [stops, setStops] = useState<RouteStop[] | null>(() => initialStops(input))
   const [copied, setCopied] = useState(false)
   // Bumped only when the hash changes from outside (back/forward, pasted link)
   // so the wizard remounts with the incoming values instead of showing stale ones.
   const [formKey, setFormKey] = useState(0)
+
+  const trip = useMemo(() => (input && stops ? buildItinerary(input, stops) : null), [input, stops])
 
   useEffect(() => {
     if (input) location.hash = encodeInput(input)
@@ -57,7 +68,7 @@ export default function App() {
       // Ignore the hash we just wrote ourselves.
       if (input && encodeInput(next) === encodeInput(input)) return
       setInput(next)
-      setTrip(planTrip(next))
+      setStops(selectStops(next))
       setFormKey((k) => k + 1)
     }
     window.addEventListener('hashchange', onHashChange)
@@ -66,7 +77,7 @@ export default function App() {
 
   function handleSubmit(next: PlannerInput) {
     setInput(next)
-    setTrip(planTrip(next))
+    setStops(selectStops(next))
     requestAnimationFrame(() => document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' }))
   }
 
@@ -77,11 +88,44 @@ export default function App() {
     })
   }
 
+  function adjustNights(regionId: string, delta: number) {
+    setStops((prev) =>
+      prev
+        ? prev.map((s) =>
+            s.region.id === regionId
+              ? { ...s, days: Math.min(s.region.maxDays, Math.max(1, s.days + delta)) }
+              : s,
+          )
+        : prev,
+    )
+  }
+
+  function removeStop(regionId: string) {
+    setStops((prev) => {
+      if (!prev || prev.length <= 1) return prev
+      if (prev[0].region.id === regionId) return prev // arrival stop anchors the route
+      return prev.filter((s) => s.region.id !== regionId)
+    })
+  }
+
+  function addStop(regionId: string) {
+    setStops((prev) => {
+      if (!prev || !input) return prev
+      const region = REGIONS.find((r) => r.id === regionId)
+      if (!region || prev.some((s) => s.region.id === regionId)) return prev
+      const dist = regionDistances()
+      const rest = [...prev.slice(1), { region, days: region.minDays }]
+      return [prev[0], ...orderStops(input.arrival, rest, dist)]
+    })
+  }
+
   return (
     <main>
-      <ThemeToggle />
-      <Hero onStart={() => document.getElementById('planner')?.scrollIntoView({ behavior: 'smooth' })} />
-      <Wizard key={formKey} onSubmit={handleSubmit} initial={input ?? undefined} />
+      <div className="no-print">
+        <ThemeToggle />
+        <Hero onStart={() => document.getElementById('planner')?.scrollIntoView({ behavior: 'smooth' })} />
+        <Wizard key={formKey} onSubmit={handleSubmit} initial={input ?? undefined} />
+      </div>
 
       {trip && (
         <div id="results" className="px-6 pb-32 max-w-5xl mx-auto">
@@ -97,12 +141,26 @@ export default function App() {
                 </h2>
                 <SeasonNote month={input?.travelMonth} year={input?.travelYear} />
               </div>
-              <button
-                onClick={copyLink}
-                className="border border-rule hover:border-sun hover:text-sun px-5 py-2.5 text-xs tracking-[0.14em] uppercase transition-colors"
-              >
-                {copied ? 'Link copied' : 'Copy share link'}
-              </button>
+              <div className="no-print flex gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="border border-rule hover:border-sun hover:text-sun px-5 py-2.5 text-xs tracking-[0.14em] uppercase transition-colors"
+                >
+                  Print
+                </button>
+                <button
+                  onClick={() => input && downloadIcs(trip, input)}
+                  className="border border-rule hover:border-sun hover:text-sun px-5 py-2.5 text-xs tracking-[0.14em] uppercase transition-colors"
+                >
+                  Add to calendar
+                </button>
+                <button
+                  onClick={copyLink}
+                  className="border border-rule hover:border-sun hover:text-sun px-5 py-2.5 text-xs tracking-[0.14em] uppercase transition-colors"
+                >
+                  {copied ? 'Link copied' : 'Copy share link'}
+                </button>
+              </div>
             </div>
           </Reveal>
 
@@ -148,16 +206,62 @@ export default function App() {
                         >
                           {meta.code}
                         </span>
-                        <span className="text-sm leading-tight">
+                        <span className="text-sm leading-tight flex-1">
                           {s.region.name}
                           <span className="block tnum text-[11px] text-ink-soft">
                             {s.days} {s.days === 1 ? 'night' : 'nights'}
                             {inbound > 0 && ` · ${inbound}h in`}
                           </span>
                         </span>
+                        <span className="no-print flex items-center gap-1 shrink-0">
+                          <button
+                            aria-label={`Remove a night from ${s.region.name}`}
+                            onClick={() => adjustNights(s.region.id, -1)}
+                            disabled={s.days <= 1}
+                            className="tnum w-6 h-6 grid place-items-center border border-rule hover:border-sun hover:text-sun disabled:opacity-30 disabled:hover:border-rule disabled:hover:text-ink text-sm"
+                          >
+                            −
+                          </button>
+                          <button
+                            aria-label={`Add a night to ${s.region.name}`}
+                            onClick={() => adjustNights(s.region.id, 1)}
+                            disabled={s.days >= s.region.maxDays}
+                            className="tnum w-6 h-6 grid place-items-center border border-rule hover:border-sun hover:text-sun disabled:opacity-30 disabled:hover:border-rule disabled:hover:text-ink text-sm"
+                          >
+                            +
+                          </button>
+                          {i > 0 && (
+                            <button
+                              aria-label={`Remove ${s.region.name} from the route`}
+                              onClick={() => removeStop(s.region.id)}
+                              className="w-6 h-6 grid place-items-center border border-rule hover:border-sun hover:text-sun text-xs ml-1"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
                       </li>
                     )
                   })}
+                  {REGIONS.some((r) => !trip.stops.some((s) => s.region.id === r.id)) && (
+                    <li className="no-print py-3">
+                      <select
+                        value=""
+                        aria-label="Add a stop to the route"
+                        onChange={(e) => {
+                          if (e.target.value) addStop(e.target.value)
+                        }}
+                        className="border border-rule bg-paper px-3 py-2 text-sm w-full"
+                      >
+                        <option value="">+ Add a stop…</option>
+                        {REGIONS.filter((r) => !trip.stops.some((s) => s.region.id === r.id)).map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                    </li>
+                  )}
                   <li className="tnum py-3 text-[10px] tracking-[0.2em] uppercase text-ink-soft">
                     Positions are geographic · lines are schematic
                   </li>
@@ -178,13 +282,13 @@ export default function App() {
 
           <Section label="Fig. 04" title="What it costs">
             <Reveal>
-              <CostBreakdown trip={trip} />
+              <CostBreakdown trip={trip} partySize={input?.partySize} budgetCap={input?.budgetCap} />
             </Reveal>
           </Section>
         </div>
       )}
 
-      <footer className="border-t border-rule py-12 px-6 flex flex-col items-center gap-4">
+      <footer className="no-print border-t border-rule py-12 px-6 flex flex-col items-center gap-4">
         <span className="block w-7 h-7 rounded-full bg-sun" aria-hidden />
         <p className="tnum text-[10px] tracking-[0.22em] uppercase text-ink-soft text-center">
           Built for wandering · Fares are estimates, not bookings

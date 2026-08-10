@@ -104,7 +104,21 @@ export default function Timeline({ trip }: { trip: Itinerary }) {
                                   style={{ background: meta.color }}
                                 />
                                 <span className="leading-relaxed">
-                                  <span className="font-medium">{a.name}</span>
+                                  <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                      `${a.name} ${stop.region.name} Japan`,
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium underline decoration-rule underline-offset-2 hover:decoration-sun hover:text-sun"
+                                  >
+                                    {a.name}
+                                  </a>
+                                  {a.bookAhead && (
+                                    <span className="tnum text-[10px] tracking-[0.1em] uppercase text-sun ml-1.5 align-middle">
+                                      Book ahead
+                                    </span>
+                                  )}
                                   <span className="text-ink-soft"> — {a.blurb} </span>
                                   <span className="tnum text-[11px] text-ink-soft whitespace-nowrap">
                                     {a.hours}h · {a.yen > 0 ? `¥${a.yen.toLocaleString('en-US')}` : 'free'}
