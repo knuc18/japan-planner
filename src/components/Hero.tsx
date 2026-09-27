@@ -15,19 +15,20 @@ const LAST = PREVIEW.length - 1
 const ARRIVE = (k: number) => k * (RUN + DWELL)
 const LOOP = ARRIVE(LAST) + DWELL + 1.4
 
+// The train rides on a track-wide carriage moved with transform (a % of the
+// carriage's own width, i.e. the track), so it never triggers page layout.
 function trainKeyframes() {
   const pct = (t: number) => `${((t / LOOP) * 100).toFixed(3)}%`
-  const frames = [`0% { left: 0%; opacity: 0; }`, `${pct(0.35)} { left: 0%; opacity: 1; }`]
+  const at = (x: number) => `transform: translateX(${x.toFixed(3)}%)`
+  const frames = [`0% { ${at(0)}; opacity: 0; }`, `${pct(0.35)} { ${at(0)}; opacity: 1; }`]
   for (let k = 0; k < LAST; k++) {
     const depart = ARRIVE(k) + DWELL
-    frames.push(
-      `${pct(depart)} { left: ${(k / LAST) * 100}%; opacity: 1; animation-timing-function: cubic-bezier(.55,0,.3,1); }`,
-    )
-    frames.push(`${pct(ARRIVE(k + 1))} { left: ${((k + 1) / LAST) * 100}%; opacity: 1; }`)
+    frames.push(`${pct(depart)} { ${at((k / LAST) * 100)}; opacity: 1; animation-timing-function: cubic-bezier(.55,0,.3,1); }`)
+    frames.push(`${pct(ARRIVE(k + 1))} { ${at(((k + 1) / LAST) * 100)}; opacity: 1; }`)
   }
-  frames.push(`${pct(ARRIVE(LAST) + DWELL)} { left: 100%; opacity: 1; }`)
-  frames.push(`${pct(ARRIVE(LAST) + DWELL + 0.5)} { left: 100%; opacity: 0; }`)
-  frames.push(`100% { left: 100%; opacity: 0; }`)
+  frames.push(`${pct(ARRIVE(LAST) + DWELL)} { ${at(100)}; opacity: 1; }`)
+  frames.push(`${pct(ARRIVE(LAST) + DWELL + 0.5)} { ${at(100)}; opacity: 0; }`)
+  frames.push(`100% { ${at(100)}; opacity: 0; }`)
   return `@keyframes example-train { ${frames.join(' ')} }`
 }
 
@@ -104,22 +105,21 @@ export default function Hero({ onStart }: { onStart: () => void }) {
       <div className="grain relative flex flex-1 items-center overflow-hidden">
         <Sky />
 
-        {/* Branches frame the top corners and shake petals loose when brushed. */}
+        {/* Branches frame the top corners. They bend in the wind, part when
+            the cursor brushes through, and shed real petals into the field. */}
         <div
-          className="depth pointer-events-none absolute -left-6 -top-4 z-[2] w-[58%] max-w-[400px] sm:w-[42%]"
+          className="depth pointer-events-none absolute -left-3 -top-2 z-[2] w-[76%] max-w-[560px] sm:w-[50%]"
           style={{ '--k': -0.12, '--dx': 14, '--dy': 8 } as CSSProperties}
           aria-hidden
         >
-          <SakuraBranch />
+          <SakuraBranch side="left" />
         </div>
         <div
-          className="depth pointer-events-none absolute -right-8 -top-6 z-[2] w-[40%] max-w-[330px] opacity-90 sm:w-[32%]"
+          className="depth pointer-events-none absolute -right-2 -top-2 z-[2] w-[50%] max-w-[420px] sm:w-[32%]"
           style={{ '--k': -0.08, '--dx': 10, '--dy': 6 } as CSSProperties}
           aria-hidden
         >
-          <div style={{ transform: 'scaleX(-1)' }}>
-            <SakuraBranch baseDelay={250} />
-          </div>
+          <SakuraBranch side="right" delay={350} />
         </div>
 
         {/* Vertical line of Japanese, the way a poster would set it. */}
@@ -244,10 +244,12 @@ export default function Hero({ onStart }: { onStart: () => void }) {
               aria-hidden
             >
               <div
-                className="absolute bottom-full -translate-x-1/2"
+                className="absolute inset-x-0 bottom-full"
                 style={{ animation: `example-train ${LOOP}s linear ${TRAIN_START}s infinite both` }}
               >
-                <Train />
+                <div className="absolute bottom-0 left-0 -translate-x-1/2">
+                  <Train />
+                </div>
               </div>
             </div>
 

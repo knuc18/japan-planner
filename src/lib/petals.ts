@@ -24,3 +24,18 @@ export function onPetalBurst(listener: Listener) {
     listeners.delete(listener)
   }
 }
+
+// The petal field owns the weather. It publishes the current breeze here each
+// frame so the branches can bend in the same gusts that carry the petals.
+
+const wind = { speed: 18, gust: 0 }
+
+export function setWind(speed: number, gust: number) {
+  wind.speed = speed
+  wind.gust = gust
+}
+
+/** Breeze speed in px/s (positive blows right) and gust strength, 0..1. */
+export function getWind(): Readonly<typeof wind> {
+  return wind
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { onPetalBurst } from '../lib/petals'
+import { onPetalBurst, setWind } from '../lib/petals'
 import { prefersReducedMotion } from '../lib/motion'
 
 // ---------------------------------------------------------------------------
@@ -183,7 +183,8 @@ export default function SakuraField() {
     const pointer = { x: -9999, y: -9999, vx: 0, vy: 0, t: 0 }
 
     function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
+      // Petals are soft-edged; past 1.5x the extra pixels cost more than they show.
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5)
       W = window.innerWidth
       H = window.innerHeight
       for (const c of [back!, front!]) {
@@ -196,8 +197,8 @@ export default function SakuraField() {
     }
 
     /** 1 over the hero, easing down to a light drift over the rest of the page. */
-    function intensity() {
-      const t = Math.min(1, scrollY / Math.max(1, H * 0.9))
+    function intensity(sy = scrollY) {
+      const t = Math.min(1, sy / Math.max(1, H * 0.9))
       return { back: 1 - 0.7 * smooth(t), front: Math.max(0, 1 - t * 1.6) }
     }
 
@@ -232,16 +233,6 @@ export default function SakuraField() {
       return p
     }
 
-    /** Petals shaken loose from the hero branches while they're in view. */
-    function branchOrigin(): Partial<Petal> | null {
-      if (scrollY > H * 0.7 || Math.random() > 0.35) return null
-      const left = Math.random() < 0.6
-      const x = left ? rand(0.02, 0.3) * W : rand(0.74, 0.98) * W
-      const y = rand(0.02, small ? 0.08 : 0.16) * H - scrollY
-      if (y < -20) return null
-      return { x, y, life: 0 }
-    }
-
     function populate() {
       const n = Math.round(maxBack * intensity().back * 0.8)
       for (let i = 0; i < n; i++) {
@@ -273,11 +264,12 @@ export default function SakuraField() {
       const t = clock
 
       const { speed: w, gust } = wind(t)
-      const inten = intensity()
+      setWind(w, gust)
+      const sy = scrollY
+      const inten = intensity(sy)
 
       // Scrolling moves the page under the petals; shift them with it, more
       // for near ones than far ones, and let a hard scroll stir them up.
-      const sy = scrollY
       const dScroll = sy - lastScroll
       lastScroll = sy
       const scrollStir = Math.min(1, Math.abs(dScroll) / 60)
@@ -359,7 +351,7 @@ export default function SakuraField() {
       // rather than a sheet.
       if (t - lastSpawn > (small ? 0.22 : 0.09)) {
         if (aliveBack < targetBack) {
-          petals.push(spawn(false, branchOrigin() ?? {}))
+          petals.push(spawn(false))
           lastSpawn = t
         } else if (aliveFront < targetFront && Math.random() < 0.02) {
           petals.push(spawn(true))
@@ -371,14 +363,19 @@ export default function SakuraField() {
       raf = requestAnimationFrame(step)
     }
 
+    // The front layer is empty once the hero scrolls away; don't keep
+    // clearing a full-screen canvas that has nothing on it.
+    let frontDrawn = true
+
     function draw() {
-      for (const [ctx, c] of [
-        [bctx!, back!],
-        [fctx!, front!],
-      ] as const) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.clearRect(0, 0, c.width, c.height)
+      const frontHas = petals.some((p) => p.front && p.life > 0)
+      bctx!.setTransform(1, 0, 0, 1, 0, 0)
+      bctx!.clearRect(0, 0, back!.width, back!.height)
+      if (frontHas || frontDrawn) {
+        fctx!.setTransform(1, 0, 0, 1, 0, 0)
+        fctx!.clearRect(0, 0, front!.width, front!.height)
       }
+      frontDrawn = frontHas
       for (const p of petals) {
         if (p.life <= 0) continue
         const ctx = p.front ? fctx! : bctx!
