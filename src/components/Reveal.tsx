@@ -1,27 +1,28 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { useInView } from '../lib/motion'
 
-export default function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.15 },
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+export default function Reveal({
+  children,
+  className = '',
+  delay = 0,
+  variant = 'up',
+  style,
+}: {
+  children: ReactNode
+  className?: string
+  /** ms before this block starts moving, for hand-staggering siblings. */
+  delay?: number
+  variant?: 'up' | 'fade'
+  style?: CSSProperties
+}) {
+  const [ref, visible] = useInView<HTMLDivElement>()
 
   return (
-    <div ref={ref} className={`reveal ${visible ? 'is-visible' : ''} ${className}`}>
+    <div
+      ref={ref}
+      className={`${variant === 'fade' ? 'reveal-fade' : 'reveal'} ${visible ? 'is-visible' : ''} ${className}`}
+      style={delay ? ({ ...style, '--delay': `${delay}ms` } as CSSProperties) : style}
+    >
       {children}
     </div>
   )

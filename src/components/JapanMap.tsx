@@ -28,7 +28,7 @@ function ticks(min: number, max: number) {
 // true projected coordinates against a graticule. The projection fits the
 // selected route rather than all of Japan, otherwise short trips collapse into
 // one corner. Swap in real GeoJSON if a literal landmass is ever wanted.
-export default function JapanMap({ stops }: { stops: RouteStop[] }) {
+export default function JapanMap({ stops, highlight }: { stops: RouteStop[]; highlight?: string | null }) {
   // Measure the rendered width so nodes and labels stay a consistent physical
   // size whatever the viewBox works out to and however wide the column is.
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -131,6 +131,7 @@ export default function JapanMap({ stops }: { stops: RouteStop[] }) {
       {pts.slice(0, -1).map((p, i) => {
         const q = pts[i + 1]
         const length = Math.hypot(q.x - p.x, q.y - p.y)
+        const touches = !highlight || highlight === stops[i].region.id || highlight === stops[i + 1].region.id
         return (
           <line
             key={`${routeKey}-${i}`}
@@ -141,10 +142,11 @@ export default function JapanMap({ stops }: { stops: RouteStop[] }) {
             stroke={REGION_META[stops[i + 1].region.id].color}
             strokeWidth={3 * k}
             strokeLinecap="round"
-            className="line-ink"
+            className="line-ink play-on-reveal transition-opacity duration-300"
             strokeDasharray={length}
             strokeDashoffset={length}
-            style={{ animation: `draw 0.55s ease forwards ${i * 190}ms` }}
+            opacity={touches ? 1 : 0.2}
+            style={{ animation: `draw 0.7s cubic-bezier(0.76,0,0.24,1) forwards ${300 + i * 220}ms` }}
           />
         )
       })}
@@ -152,29 +154,84 @@ export default function JapanMap({ stops }: { stops: RouteStop[] }) {
       {stops.map((s, i) => {
         const meta = REGION_META[s.region.id]
         const p = pts[i]
+        const lit = highlight === s.region.id
+        const dim = highlight && !lit
         return (
-          <g key={s.region.id} style={{ animation: `rise 0.45s ease backwards ${i * 190 + 220}ms` }}>
-            <circle cx={p.x} cy={p.y} r={nodeR} fill={meta.color} />
-            <circle cx={p.x} cy={p.y} r={nodeR} fill="none" stroke="var(--color-paper)" strokeWidth={2 * k} />
-            <text
-              x={p.x}
-              y={p.y + 3.4 * k}
-              textAnchor="middle"
-              className="tnum"
-              fontSize={codeSize}
-              fontWeight="600"
-              fill="#fff"
+          <g
+            key={s.region.id}
+            className="transition-opacity duration-300"
+            opacity={dim ? 0.3 : 1}
+          >
+            <g
+              className="play-on-reveal"
+              style={{
+                animation: `pop-in 0.55s cubic-bezier(0.34,1.56,0.64,1) both ${i * 220 + 200}ms`,
+                transformBox: 'fill-box',
+                transformOrigin: 'center',
+              }}
             >
-              {meta.code}
-            </text>
+              {/* Halo that blooms when the stop is hovered in the list. */}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={nodeR * 1.9}
+                fill={meta.color}
+                opacity={lit ? 0.18 : 0}
+                className="transition-opacity duration-300"
+              />
+              <g
+                style={{
+                  transform: lit ? 'scale(1.22)' : 'none',
+                  transformBox: 'fill-box',
+                  transformOrigin: 'center',
+                  transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+                }}
+              >
+                <circle cx={p.x} cy={p.y} r={nodeR} fill={meta.color} />
+                <circle cx={p.x} cy={p.y} r={nodeR} fill="none" stroke="var(--color-paper)" strokeWidth={2 * k} />
+                <text
+                  x={p.x}
+                  y={p.y + 3.4 * k}
+                  textAnchor="middle"
+                  className="tnum"
+                  fontSize={codeSize}
+                  fontWeight="600"
+                  fill="#fff"
+                >
+                  {meta.code}
+                </text>
+              </g>
+            </g>
           </g>
         )
       })}
 
+      {/* A train works the line on a loop, trailing a short glow. */}
       {routeD && (
-        <circle r={3.5 * k} fill="var(--color-ink)">
-          <animateMotion dur={`${Math.max(5, stops.length * 1.4)}s`} repeatCount="indefinite" path={routeD} />
-        </circle>
+        <g className="moving-train no-print" key={`train-${routeKey}`}>
+          {[0.18, 0.12, 0.06, 0].map((lag, j) => (
+            <circle
+              key={lag}
+              r={(j === 3 ? 3.6 : 1.8 + j * 0.45) * k}
+              fill={j === 3 ? 'var(--color-ink)' : 'var(--color-sun)'}
+              opacity={j === 3 ? 1 : 0.15 + j * 0.15}
+              visibility="hidden"
+            >
+              {/* Hidden until it departs, or it would sit at the SVG origin. */}
+              <set attributeName="visibility" to="visible" begin={`${1.2 + stops.length * 0.22 + lag}s`} fill="freeze" />
+              <animateMotion
+                dur={`${Math.max(5, stops.length * 1.4)}s`}
+                begin={`${1.2 + stops.length * 0.22 + lag}s`}
+                repeatCount="indefinite"
+                path={routeD}
+                calcMode="spline"
+                keyPoints="0;1"
+                keyTimes="0;1"
+                keySplines="0.45 0 0.55 1"
+              />
+            </circle>
+          ))}
+        </g>
       )}
       </svg>
     </div>
